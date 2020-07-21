@@ -1,6 +1,21 @@
 from __future__ import annotations
 from ps4.encryption import RSAMixin, AESMixin, CipherModule
 
+'''
+bye = 4
+newByePacket() {
+        return this.create(8)
+            .writeInt(PacketType.Bye);
+    }
+
+    newCHelloPacket() {
+        return this.create(28)
+            .writeInt(PacketType.ClientHello)
+            .writeInt(VERSION)
+            .writeInt(0);
+    }
+'''
+
 
 class Packet:
     def __init__(self):
@@ -31,6 +46,11 @@ class Packet:
         return self
 
 
+class EndPacket(Packet):
+    def __init__(self):
+        super().__init__()
+
+
 class HelloPacket(Packet):
     def __init__(self):
         super().__init__()
@@ -58,6 +78,14 @@ class PacketManager:
     def __init__(self):
         self.cipher_module = None
 
+    def init_shutdown_packet(self) -> MultiFunctionPacket:
+        packet = MultiFunctionPacket(self.cipher_module) \
+            .write_int(8, max_bytes=4) \
+            .write_int(26, max_bytes=12) \
+            .write_bytes(b'', max_bytes=8)
+        packet.encrypt()
+        return packet
+
     def init_hello_packet(self) -> HelloPacket:
         return HelloPacket() \
             .write_int(28, max_bytes=4) \
@@ -67,23 +95,32 @@ class PacketManager:
 
     def init_keyex_packet(self) -> KeyExchangePacket:
         return KeyExchangePacket(self.cipher_module) \
+            .write_int(280, max_bytes=4) \
             .write_int(32, max_bytes=4) \
             .write_key() \
             .write_bytes(self.cipher_module.iv, max_bytes=16)
 
-    def init_login_packet(self, credentials) -> MultiFunctionPacket:
+    def init_login_packet(self, credentials : bytes) -> MultiFunctionPacket:
         packet = MultiFunctionPacket(self.cipher_module) \
             .write_int(value=384) \
             .write_int(value=30) \
             .write_bytes(b'', max_bytes=4) \
             .write_int(513) \
             .write_bytes(credentials, max_bytes=64) \
-            .write_bytes(b'Grants Python App', max_bytes=256) \
+            .write_bytes(b'Python App', max_bytes=256) \
             .write_bytes(b'4.4', max_bytes=16) \
             .write_bytes(b'PS4 IOT', max_bytes=16) \
             .write_bytes(b'', max_bytes=16)
         packet.encrypt()
 
+        return packet
+
+    def init_status_packet(self) -> MultiFunctionPacket:
+        packet = MultiFunctionPacket(self.cipher_module) \
+            .write_int(12, max_bytes=4) \
+            .write_int(20, max_bytes=4) \
+            .write_bytes(b'', max_bytes=8)
+        packet.encrypt()
         return packet
 
     def init_launch_packet(self, id: bytes) -> MultiFunctionPacket:

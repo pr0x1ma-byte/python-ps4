@@ -2,7 +2,7 @@ import logging, time
 from flask import Flask, request
 from flask_cors import CORS
 
-from ps4.actions import Action, Command
+from ps4.actions import Action, Command, OnOff
 from ps4.config import ConfigMixin
 from ps4.tools import PS4Tool, DiscoveryTool, GoogleHomeDiscoveryTool
 from ps4.packets import CipherModule, KeyExchangePacket, HelloPacket, PacketManager, MultiFunctionPacket
@@ -17,14 +17,17 @@ app = Flask(__name__)
 CORS(app)
 
 
-def execute_action(data):
+def execute_action():
     config = ConfigMixin()
     config.load()
     ip = config.config['DEFAULT']['ip']
     port = int(config.config['DEFAULT']['port'])
     cred = config.config['DEFAULT']['credential']
 
-    action = Action.map(raw=data)
+    # action = Action.map(raw=data)
+    action = OnOff()
+    action.state = True
+    action.command = Command.ON_OFF
 
     discovery_tool = DiscoveryTool(ip=ip, cred=cred)
     ps4_tool = PS4Tool()
@@ -57,7 +60,7 @@ def execute_action(data):
     ps4_tool.send(kex_packet.buffer)
     logger.debug("exchanged key with playstation")
 
-    login_packet = manager.init_login_packet(credentials=bytes(cred, 'utf-8'))
+    login_packet = manager.init_login_packet(credentials=bytes(cred,'utf-8'))
 
     ps4_tool.send(login_packet.cipher_text)
     data = ps4_tool.receive()
@@ -79,7 +82,7 @@ def execute_action(data):
         data = ps4_tool.receive()
 
 
-@app.route('/action', methods=['POST'])
+@app.route('/process', methods=['POST'])
 def action():
     thread_action = threading.Thread(target=execute_action, kwargs={'data': request.data})
     thread_action.start()
@@ -87,8 +90,8 @@ def action():
 
 
 if __name__ == '__main__':
-    home = GoogleHomeDiscoveryTool()
-    home.daemon = True
-    home.start()
-
-    app.run(port=8081, host='0.0.0.0')
+    # home = GoogleHomeDiscoveryTool()
+    ##home.daemon = True
+    # home.start()
+    execute_action()
+    # app.run(port=8081, host='0.0.0.0')

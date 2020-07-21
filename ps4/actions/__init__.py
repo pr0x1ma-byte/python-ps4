@@ -50,6 +50,8 @@ class AppSelection(Action):
 
 
 class OnOff(Action):
-    def __init__(self, command: Command, data: any):
+    def __init__(self, command: Command = None, data: any = None):
         super().__init__(command=command, data=data)
-        self.state = self.data['params']['on']
+        self.state = None
+        if not self.data is None:
+            self.state = self.data['params']['on']

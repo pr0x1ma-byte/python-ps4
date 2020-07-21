@@ -6,7 +6,7 @@ with open("README.md", "r") as fh:
 setuptools.setup(
     name="grant100",
     version="1.0.0",
-    author="Grant S.",
+    author="Grant Sowards",
     description="Make your PS4 an IOT device",
     long_description=long_description,
     long_description_content_type="text/markdown",

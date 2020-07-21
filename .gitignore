@@ -1,0 +1,13 @@
+.idea
+.DS_Store
+env
+google/app/node_modules
+google/functions/node_modules
+ps4/__pycache__/
+ps4/config/__pycache__/
+ps4/tools/__pycache__/
+ps4/encryption/__pycache__/
+ps4/actions/__pycache__/
+ps4/packets/__pycache__/
+ps4/*.pyc
+*.pyc

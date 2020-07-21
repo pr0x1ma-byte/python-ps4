@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "target": "es2018",
+    "moduleResolution": "node",
+    "strict": true,
+    "sourceMap": true,
+    "outDir": "dist/",
+    "outFile": "dist/bundle.js"
+  },
+  "files" : [
+    "index.ts"
+  ]
+}

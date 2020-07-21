@@ -1,5 +1,5 @@
 clean:
-	rm -rf venv/
+	rm -rf env/
 
 build: clean
 	python3 -m venv env/

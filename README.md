@@ -1,7 +1,3 @@
-# PS4-iot
-
-Integrate your PS4 as an IOT device with your Google Home. 
-
 # Overview
 
 The python-ps4 project allows you to control your playstation with your voice with Google!

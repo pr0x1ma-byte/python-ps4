@@ -4,7 +4,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="grant100",
+    name="python-ps4",
     version="1.0.0",
     author="Grant Sowards",
     description="Make your PS4 an IOT device",

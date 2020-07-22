@@ -38,32 +38,54 @@ def execute_action(data):
         except Exception as e:
             logger.exception(e)
 
-    manager = PacketManager()
-
     ps4_tool.connect(ip, port)
     logger.debug("connected to playstation on {ip: %s, port: %s}", ip, port)
+    hello_packet = HelloPacket() \
+        .write_int(28, max_bytes=4) \
+        .write_bytes(b'pcco', max_bytes=5) \
+        .write_int(512, max_bytes=4) \
+        .write_bytes(b'', max_bytes=15)
 
-    hello_packet = manager.init_hello_packet()
     ps4_tool.send(hello_packet.buffer)
     logger.debug("sent client hello to playstation")
     data = ps4_tool.receive()
 
     iv = data[20:36]
     crypto = CipherModule(iv)
-    manager.set_cipher_module(crypto)
 
-    kex_packet = manager.init_keyex_packet()
+    kex_packet = KeyExchangePacket(crypto)
+    kex_packet.write_int(280, max_bytes=4) \
+        .write_int(32, max_bytes=4) \
+        .write_key() \
+        .write_bytes(iv, max_bytes=16)
 
     ps4_tool.send(kex_packet.buffer)
     logger.debug("exchanged key with playstation")
 
-    login_packet = manager.init_login_packet(credentials=bytes(cred, 'utf-8'))
+    login_packet = MultiFunctionPacket(crypto) \
+        .write_int(value=384) \
+        .write_int(value=30) \
+        .write_bytes(b'', max_bytes=4) \
+        .write_int(513) \
+        .write_bytes(bytes(cred, 'utf-8'), max_bytes=64) \
+        .write_bytes(b'Python App', max_bytes=256) \
+        .write_bytes(b'4.4', max_bytes=16) \
+        .write_bytes(b'PS4 IOT', max_bytes=16) \
+        .write_bytes(b'', max_bytes=16) \
+        .encrypt()
 
     ps4_tool.send(login_packet.cipher_text)
     data = ps4_tool.receive()
     logger.debug("logged into playstation")
+    status = MultiFunctionPacket(crypto) \
+        .write_int(12, max_bytes=4) \
+        .write_int(20, max_bytes=4) \
+        .write_bytes(b'', max_bytes=8)
+    status.encrypt()
 
     if action.command == Command.ON_OFF:
+        manager = PacketManager()
+        manager.set_cipher_module(crypto)
         if not action.state:
             shutdown_packet = manager.init_shutdown_packet()
             ps4_tool.send(shutdown_packet.cipher_text)
@@ -71,7 +93,14 @@ def execute_action(data):
             return
 
     if action.command == Command.APP_SELECT:
-        status = manager.init_status_packet()
+        manager = PacketManager()
+        manager.set_cipher_module(crypto)
+        status = MultiFunctionPacket(crypto) \
+            .write_int(12, max_bytes=4) \
+            .write_int(20, max_bytes=4) \
+            .write_bytes(b'', max_bytes=8)
+        status.encrypt()
+
         packet = manager.init_launch_packet(action.get_application())
         logger.debug("launching %s on playstation", action.application)
         ps4_tool.send(status.cipher_text)

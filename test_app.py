@@ -1,6 +1,7 @@
 import logging, time
 from flask import Flask, request
 from flask_cors import CORS
+from ps4.actions import AppSelection, Application
 
 from ps4.actions import Action, Command, OnOff
 from ps4.config import ConfigMixin
@@ -25,10 +26,11 @@ def execute_action():
     cred = config.config['DEFAULT']['credential']
 
     # action = Action.map(raw=data)
-    action = OnOff()
-    action.state = True
-    action.command = Command.ON_OFF
-
+    #action = OnOff()
+    #action.state = True
+    action = AppSelection()
+    action.command = Command.APP_SELECT
+    action.application = Application.NETFLIX
     discovery_tool = DiscoveryTool(ip=ip, cred=cred)
     ps4_tool = PS4Tool()
 

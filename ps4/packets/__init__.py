@@ -81,7 +81,7 @@ class PacketManager:
     def init_shutdown_packet(self) -> MultiFunctionPacket:
         packet = MultiFunctionPacket(self.cipher_module) \
             .write_int(8, max_bytes=4) \
-            .write_int(26, max_bytes=12) \
+            .write_int(26, max_bytes=4) \
             .write_bytes(b'', max_bytes=8)
         packet.encrypt()
         return packet
@@ -100,7 +100,7 @@ class PacketManager:
             .write_key() \
             .write_bytes(self.cipher_module.iv, max_bytes=16)
 
-    def init_login_packet(self, credentials : bytes) -> MultiFunctionPacket:
+    def init_login_packet(self, credentials : bytes, pin : bytes = b'') -> MultiFunctionPacket:
         packet = MultiFunctionPacket(self.cipher_module) \
             .write_int(value=384) \
             .write_int(value=30) \
@@ -109,8 +109,8 @@ class PacketManager:
             .write_bytes(credentials, max_bytes=64) \
             .write_bytes(b'Python App', max_bytes=256) \
             .write_bytes(b'4.4', max_bytes=16) \
-            .write_bytes(b'PS4 IOT', max_bytes=16) \
-            .write_bytes(b'', max_bytes=16)
+            .write_bytes(b'RPI', max_bytes=16) \
+            .write_bytes(pin, max_bytes=16)
         packet.encrypt()
 
         return packet

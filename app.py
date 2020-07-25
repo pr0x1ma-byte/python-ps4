@@ -1,4 +1,6 @@
 import logging
+from logging.handlers import SysLogHandler
+
 from flask import Flask, request
 from flask_cors import CORS
 
@@ -14,7 +16,7 @@ parser.add_argument('--register', dest='is_register', action='store_true', help=
 
 args = parser.parse_args()
 logger = logging.getLogger()
-logger.addHandler(logging.StreamHandler())
+logger.addHandler(SysLogHandler(address='/dev/log'))
 logger.setLevel(logging.ERROR)
 
 app = Flask(__name__)

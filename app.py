@@ -13,7 +13,7 @@ import threading, argparse, sys
 setproctitle.setproctitle('python-ps4')
 parser = argparse.ArgumentParser(description='Command PS4 from Google')
 parser.add_argument('--register', dest='is_register', action='store_true', help='initiate registration with PS4')
-parser.add_argument('--debug', dest='debug', action='store_true', help='initiate registration with PS4')
+parser.add_argument('--debug', dest='debug', action='store_true', default=False, help='initiate registration with PS4')
 
 args = parser.parse_args()
 logger = logging.getLogger()

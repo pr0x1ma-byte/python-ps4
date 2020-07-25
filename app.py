@@ -18,16 +18,16 @@ parser.add_argument('--debug', dest='debug', action='store_true', default=False,
 args = parser.parse_args()
 logger = logging.getLogger()
 
+if args.debug:
+    logger.setLevel(logging.DEBUG)
+else:
+    logger.setLevel(logging.INFO)
+
 address='/dev/log'
 if platform.system() == 'Darwin':
     address='/var/run/syslog'
 
 logger.addHandler(SysLogHandler(address=address))
-
-if args.debug:
-    logger.setLevel(logging.DEBUG)
-else:
-    logger.setLevel(logging.INFO)
 
 app = Flask(__name__)
 CORS(app)

@@ -4,28 +4,15 @@ from Crypto.Cipher import AES, PKCS1_OAEP
 from Crypto.Util.Padding import pad
 
 
-class RSAMixin:
-    def __init__(self):
-        pass
-
-    def encrypt_key(self) -> object:
-        self.cipher_text = self.cipher_module.rsa_encrypt(self.cipher_module.shared_key)
+class CryptoModule:
+    def __init__(self, iv):
+        self.iv = iv
+        self.shared_key = b'0000000000000000'
 
 
-class AESMixin:
-    def __init__(self):
-        pass
-
-    def encrypt(self) -> object:
-        self.cipher_text = self.cipher_module.aes_encrypt(self.buffer)
-        return self
-
-    def decrypt(self, bytz: bytes) -> object:
-        return self.cipher_module.aes_decrypt(bytz)
-
-
-class CipherModule:
-    def __init__(self, seed: bytes):
+class EncryptionModule(CryptoModule):
+    def __init__(self, iv: bytes):
+        super().__init__(iv=iv)
         self.PUBLIC_KEY = \
             "-----BEGIN PUBLIC KEY-----\n" \
             "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxfAO/MDk5ovZpp7xlG9J\n" \
@@ -37,12 +24,9 @@ class CipherModule:
             "swIDAQAB\n" \
             "-----END PUBLIC KEY-----"
 
-        self.iv = seed
-        self.shared_key = b'0000000000000000'
         self.rsaobj_key = RSA.importKey(self.PUBLIC_KEY)
         self.cipher_rsa = PKCS1_OAEP.new(self.rsaobj_key)
         self.cipher_aes = AES.new(self.shared_key, AES.MODE_CBC, self.iv)
-        self.dipher_aes = AES.new(self.shared_key, AES.MODE_CBC, self.iv)
 
     def rsa_encrypt(self, bytz: bytes) -> bytes:
         return self.cipher_rsa.encrypt(bytz)
@@ -51,5 +35,14 @@ class CipherModule:
         txt = pad(bytz, AES.block_size)
         return self.cipher_aes.encrypt(bytz)
 
+    def get_encrypted_aes_key(self):
+        return self.rsa_encrypt(self.shared_key)
+
+
+class DecryptionModule(CryptoModule):
+    def __init__(self, iv):
+        super().__init__(iv=iv)
+        self.cipher_aes = AES.new(self.shared_key, AES.MODE_CBC, self.iv)
+
     def aes_decrypt(self, bytz: bytes) -> bytes:
-        return AES.new(self.shared_key, AES.MODE_CBC, self.iv).decrypt(bytz)
+        return self.cipher_aes.decrypt(bytz)

@@ -11,7 +11,7 @@ class ConfigMixin:
         home = str(Path.home())
         file_path = os.path.join(home, self.name)
         if not os.path.exists(file_path):
-            self.config['DEFAULT'] = {'ip': ' ', 'port': 997, 'credential': ' '}
+            self.config['DEFAULT'] = {'ip': ' ', 'port': 997, 'credential': ' ', 'log_level': 'ERROR'}
             with open(os.path.join(home, self.name), 'w') as file:
                 self.config.write(file)
                 return

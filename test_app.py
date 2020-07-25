@@ -1,11 +1,11 @@
 import logging, time, sys
 from flask import Flask, request
 from flask_cors import CORS
+from ps4.actions import AppSelection, Application
 
+from ps4 import PS4
 from ps4.actions import Action, Command, OnOff
 from ps4.config import ConfigMixin
-from ps4.tools import PS4Tool, DiscoveryTool, GoogleHomeDiscoveryTool
-from ps4.packets import CipherModule, KeyExchangePacket, HelloPacket, PacketManager, MultiFunctionPacket
 
 import argparse
 import threading
@@ -28,68 +28,42 @@ def execute_action():
     config.load()
     ip = config.config['DEFAULT']['ip']
     port = int(config.config['DEFAULT']['port'])
-    cred = config.config['DEFAULT']['credential']
+    credentials = config.config['DEFAULT']['credential']
+
+    # action = Action.map(raw=data)
+    #action = OnOff()
+    #action.state = False
+    #action.command = Command.ON_OFF
+    action = AppSelection()
+    action.command = Command.APP_SELECT
+    action.application = Application.NETFLIX
+
+    ps4 = PS4(ip=ip, port=port, credentials=bytes(credentials, 'utf-8'))
+    ps4.login()
+
+    ps4.execute(action=action)
+
+def register(pin):
+    config = ConfigMixin()
+    config.load()
+    ip = config.config['DEFAULT']['ip']
+    port = int(config.config['DEFAULT']['port'])
+    #credentials = config.config['DEFAULT']['credential']
 
     # action = Action.map(raw=data)
     action = OnOff()
-    action.state = True
+    action.state = False
     action.command = Command.ON_OFF
+    #action = AppSelection()
+    #action.command = Command.APP_SELECT
+    #action.application = Application.AMAZON
 
-    discovery_tool = DiscoveryTool(ip=ip, cred=cred)
-    ps4_tool = PS4Tool()
+    ps4 = PS4(ip=ip, port=port, credentials=bytes(pin, 'utf-8'))
+    ps4.login()
 
-    is_ok = False
-    while not is_ok:
-        try:
-            is_ok = discovery_tool.search()
-            discovery_tool.wake()
-            time.sleep(1)
-        except Exception as e:
-            logger.exception(e)
+    #ps4.execute(action=action)
 
-    manager = PacketManager()
-
-    ps4_tool.connect(ip, port)
-    logger.debug("connected to playstation on {ip: %s, port: %s}", ip, port)
-
-    hello_packet = manager.init_hello_packet()
-    ps4_tool.send(hello_packet.buffer)
-    logger.debug("sent client hello to playstation")
-    data = ps4_tool.receive()
-    # logger.debug("response: %s", data)
-    iv = data[20:36]
-    crypto = CipherModule(iv)
-    manager.set_cipher_module(crypto)
-
-    kex_packet = manager.init_keyex_packet()
-
-    ps4_tool.send(kex_packet.buffer)
-    logger.debug("exchanged key with playstation")
-
-    login_packet = manager.init_login_packet(credentials=bytes(cred, 'utf-8'))
-
-    ps4_tool.send(login_packet.cipher_text)
-    data = ps4_tool.receive()
-
-    logger.debug("logged into playstation")
-
-    if action.command == Command.ON_OFF:
-        if not action.state:
-            shutdown_packet = manager.init_shutdown_packet()
-            ps4_tool.send(shutdown_packet.cipher_text)
-            data = ps4_tool.receive()
-            return
-
-    if action.command == Command.APP_SELECT:
-        status = manager.init_status_packet()
-        packet = manager.init_launch_packet(action.get_application())
-        logger.debug("launching %s on playstation", action.application)
-        ps4_tool.send(status.cipher_text)
-        ps4_tool.send(packet.cipher_text)
-        data = ps4_tool.receive()
-
-
-def register(pin):
+'''def register(pin):
     config = ConfigMixin()
     config.load()
     ip = config.config['DEFAULT']['ip']
@@ -135,7 +109,7 @@ def register(pin):
     login_packet = manager.init_login_packet(credentials=bytes(cred, 'utf-8'), pin=bytes(pin, 'utf-8'))
     ps4_tool.send(login_packet.cipher_text)
     data = ps4_tool.receive()
-
+'''
 
 @app.route('/process', methods=['POST'])
 def action():

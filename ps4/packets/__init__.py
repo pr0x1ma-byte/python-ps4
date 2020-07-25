@@ -1,5 +1,5 @@
 from __future__ import annotations
-from ps4.encryption import RSAMixin, AESMixin, CipherModule
+from ps4.encryption import EncryptionModule, DecryptionModule
 
 from enum import Enum
 
@@ -12,9 +12,15 @@ class PacketType(Enum):
     CLIENT_KEYEXCHNG = 5
     CLIENT_APPLAUNCH = 6
 
-    DEVICE_SEARCH = 7
-    DEVICE_LAUNCH = 8
-    DEVICE_WAKEUP = 9
+    SERVER_HELLO_RSP = 7
+    SERVER_LOGIN_RSP = 8
+    SERVER_SHUTDOWN_RSP = 9
+    SERVER_KEYEXCHNG_RSP = 10
+    SERVER_APPLAUNCH_RSP = 11
+
+    DEVICE_SEARCH = 12
+    DEVICE_LAUNCH = 13
+    DEVICE_WAKEUP = 14
 
 
 class Packet:
@@ -28,13 +34,13 @@ class Packet:
         self._write(int(value).to_bytes(2, endian), max_bytes)
         return self
 
-    def write_bytes(self, bytz: bytes, max_bytes=4) -> Packet:
-        self._write(bytz, max_bytes)
+    def write_bytes(self, raw_bytes: bytes, max_bytes=4) -> Packet:
+        self._write(raw_bytes, max_bytes)
         return self
 
-    def _write(self, bytz: bytes, max_bytes: int) -> Packet:
+    def _write(self, raw_bytes: bytes, max_bytes: int) -> Packet:
         padding = 0
-        size_bytes = len(bytz)
+        size_bytes = len(raw_bytes)
 
         if max_bytes != 0:
 
@@ -43,31 +49,21 @@ class Packet:
 
             padding = max_bytes - size_bytes
 
-        self.buffer += (bytz + (self.nop * padding))
+        self.buffer += (raw_bytes + (self.nop * padding))
         return self
 
 
-class RSAPacket(Packet, RSAMixin):
-    def __init__(self, packet_type:PacketType, cipher_module: CipherModule):
-        super().__init__(packet_type=packet_type)
-        self.cipher_module = cipher_module
-
-    def write_key(self) -> RSAPacket:
-        self.encrypt_key()
-        self.write_bytes(self.cipher_text, max_bytes=256)
-        return self
-
-
-class AESPacket(Packet, AESMixin):
-
-    def __init__(self, packet_type:PacketType, cipher_module: CipherModule):
-        super().__init__(packet_type=packet_type)
-        self.cipher_module = cipher_module
+class Response:
+    def __init__(self, packet_type: PacketType = None):
+        self.status = None
+        self.raw_bytes = None
+        self.packet_type = packet_type
 
 
 class PacketManager:
     def __init__(self):
-        self.cipher_module = None
+        self.encryption_module = None
+        self.decryption_module = None
 
     def init_udp_launch_packet(self, credentials: bytes = b'', protocol_version: bytes = b'00020020') -> Packet:
         if credentials == b'':
@@ -112,12 +108,12 @@ class PacketManager:
 
         return packet
 
-    def init_shutdown_packet(self) -> AESPacket:
-        packet = AESPacket(packet_type=PacketType.CLIENT_SHUTDOWN, cipher_module=self.cipher_module) \
+    def init_shutdown_packet(self) -> Packet:
+        packet = Packet(packet_type=PacketType.CLIENT_SHUTDOWN) \
             .write_int(8, max_bytes=4) \
             .write_int(26, max_bytes=4) \
             .write_bytes(b'', max_bytes=8)
-        packet.encrypt()
+        packet.cipher_text = self.encryption_module.aes_encrypt(packet.buffer)
         return packet
 
     def init_hello_packet(self) -> Packet:
@@ -127,15 +123,17 @@ class PacketManager:
             .write_int(512, max_bytes=4) \
             .write_bytes(b'', max_bytes=15)
 
-    def init_keyex_packet(self) -> RSAPacket:
-        return RSAPacket(packet_type=PacketType.CLIENT_KEYEXCHNG, cipher_module=self.cipher_module) \
+    def init_keyex_packet(self) -> Packet:
+        encrypted_aes_key = self.encryption_module.get_encrypted_aes_key()
+        packet = Packet(packet_type=PacketType.CLIENT_KEYEXCHNG) \
             .write_int(280, max_bytes=4) \
             .write_int(32, max_bytes=4) \
-            .write_key() \
-            .write_bytes(self.cipher_module.iv, max_bytes=16)
+            .write_bytes(encrypted_aes_key, max_bytes=256) \
+            .write_bytes(self.encryption_module.iv, max_bytes=16)
+        return packet
 
-    def init_login_packet(self, credentials: bytes, pin: bytes = b'') -> AESPacket:
-        packet = AESPacket(packet_type=PacketType.CLIENT_LOGIN, cipher_module=self.cipher_module) \
+    def init_login_packet(self, credentials: bytes, pin: bytes = b'') -> Packet:
+        packet = Packet(packet_type=PacketType.CLIENT_LOGIN) \
             .write_int(value=384) \
             .write_int(value=30) \
             .write_bytes(b'', max_bytes=4) \
@@ -145,26 +143,34 @@ class PacketManager:
             .write_bytes(b'4.4', max_bytes=16) \
             .write_bytes(b'RPI', max_bytes=16) \
             .write_bytes(pin, max_bytes=16)
-        packet.encrypt()
+        packet.cipher_text = self.encryption_module.aes_encrypt(packet.buffer)
 
         return packet
 
-    def init_status_packet(self) -> AESPacket:
-        packet = AESPacket(packet_type=PacketType.CLIENT_STATUS, cipher_module=self.cipher_module) \
+    def init_status_packet(self) -> Packet:
+        packet = Packet(packet_type=PacketType.CLIENT_STATUS) \
             .write_int(12, max_bytes=4) \
             .write_int(20, max_bytes=4) \
             .write_bytes(b'', max_bytes=8)
-        packet.encrypt()
+        packet.cipher_text = self.encryption_module.aes_encrypt(packet.buffer)
         return packet
 
-    def init_app_launch_packet(self, id: bytes) -> AESPacket:
-        packet = AESPacket(packet_type=PacketType.CLIENT_APPLAUNCH, cipher_module=self.cipher_module) \
+    def init_app_launch_packet(self, id: bytes) -> Packet:
+        packet = Packet(packet_type=PacketType.CLIENT_APPLAUNCH) \
             .write_int(24, max_bytes=4) \
             .write_int(10, max_bytes=4) \
             .write_bytes(id, max_bytes=16) \
             .write_bytes(b'', max_bytes=8)
-        packet.encrypt()
+        packet.cipher_text = self.encryption_module.aes_encrypt(packet.buffer)
         return packet
 
-    def set_cipher_module(self, cipher_module: CipherModule):
-        self.cipher_module = cipher_module
+    def init_login_rsp_packet(self, raw_bytes: bytes):
+        #packet = Packet(packet_type=PacketType.SERVER_LOGIN_RSP)
+        #return packet
+        pass
+
+    def set_encryption_module(self, encryption_module: EncryptionModule):
+        self.encryption_module = encryption_module
+
+    def set_decryption_module(self, decryption_module: DecryptionModule):
+        self.decryption_module = decryption_module

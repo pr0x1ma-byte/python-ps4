@@ -1,11 +1,10 @@
-import logging, time
+import logging
 from flask import Flask, request
 from flask_cors import CORS
 
-from ps4.actions import Action, Command
+from ps4 import PS4
 from ps4.config import ConfigMixin
-from ps4.tools import PS4Tool, DiscoveryTool, GoogleHomeDiscoveryTool
-from ps4.packets import CipherModule, KeyExchangePacket, HelloPacket, PacketManager, MultiFunctionPacket
+from ps4.tools import GoogleHomeDiscoveryTool
 
 import threading, argparse, sys
 
@@ -15,7 +14,7 @@ parser.add_argument('--register', dest='is_register', action='store_true', help=
 args = parser.parse_args()
 logger = logging.getLogger()
 logger.addHandler(logging.StreamHandler())
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.ERROR)
 
 app = Flask(__name__)
 CORS(app)
@@ -26,108 +25,25 @@ def execute_action(data):
     config.load()
     ip = config.config['DEFAULT']['ip']
     port = int(config.config['DEFAULT']['port'])
-    cred = config.config['DEFAULT']['credential']
+    credentials = config.config['DEFAULT']['credential']
+    log_level = config.config['DEFAULT']['log_level']
+    logger.setLevel(logging.getLevelName(log_level))
 
-    action = Action.map(raw=data)
+    ps4 = PS4(ip=ip, port=port, credentials=bytes(credentials, 'utf-8'))
+    ps4.login()
+    ps4.execute(action=action)
 
-    discovery_tool = DiscoveryTool(ip=ip, cred=cred)
-    ps4_tool = PS4Tool()
-
-    is_ok = False
-    while not is_ok:
-        try:
-            is_ok = discovery_tool.search()
-            discovery_tool.wake()
-            time.sleep(1)
-        except Exception as e:
-            logger.exception(e)
-
-    manager = PacketManager()
-
-    ps4_tool.connect(ip, port)
-    logger.debug("connected to playstation on {ip: %s, port: %s}", ip, port)
-
-    hello_packet = manager.init_hello_packet()
-    ps4_tool.send(hello_packet.buffer)
-    logger.debug("sent client hello to playstation")
-    data = ps4_tool.receive()
-
-    iv = data[20:36]
-    crypto = CipherModule(iv)
-    manager.set_cipher_module(crypto)
-
-    kex_packet = manager.init_keyex_packet()
-
-    ps4_tool.send(kex_packet.buffer)
-    logger.debug("exchanged key with playstation")
-
-    login_packet = manager.init_login_packet(credentials=bytes(cred, 'utf-8'))
-
-    ps4_tool.send(login_packet.cipher_text)
-    data = ps4_tool.receive()
-    logger.debug("logged into playstation")
-
-    if action.command == Command.ON_OFF:
-        if not action.state:
-            shutdown_packet = manager.init_shutdown_packet()
-            ps4_tool.send(shutdown_packet.cipher_text)
-            data = ps4_tool.receive()
-            return
-
-    if action.command == Command.APP_SELECT:
-        status = manager.init_status_packet()
-        packet = manager.init_launch_packet(action.get_application())
-        logger.debug("launching %s on playstation", action.application)
-        ps4_tool.send(status.cipher_text)
-        ps4_tool.send(packet.cipher_text)
-        data = ps4_tool.receive()
 
 def register(pin):
     config = ConfigMixin()
     config.load()
     ip = config.config['DEFAULT']['ip']
     port = int(config.config['DEFAULT']['port'])
-    cred = config.config['DEFAULT']['credential']
 
-    discovery_tool = DiscoveryTool(ip=ip, cred=cred)
-    ps4_tool = PS4Tool()
+    ps4 = PS4(ip=ip, port=port, credentials=bytes(pin, 'utf-8'))
+    ps4.login()
+    ps4.execute(action=action)
 
-    is_ok = False
-    while not is_ok:
-        try:
-            is_ok = discovery_tool.search()
-            discovery_tool.wake()
-            time.sleep(1)
-        except Exception as e:
-            logger.exception(e)
-
-    manager = PacketManager()
-
-    ps4_tool.connect(ip, port)
-    logger.debug("connected to playstation on {ip: %s, port: %s}", ip, port)
-
-    hello_packet = manager.init_hello_packet()
-    ps4_tool.send(hello_packet.buffer)
-    logger.debug("sent client hello to playstation")
-    data = ps4_tool.receive()
-    # logger.debug("response: %s", data)
-    iv = data[20:36]
-    crypto = CipherModule(iv)
-    manager.set_cipher_module(crypto)
-
-    kex_packet = manager.init_keyex_packet()
-
-    ps4_tool.send(kex_packet.buffer)
-    logger.debug("exchanged key with playstation")
-
-    login_packet = manager.init_login_packet(credentials=bytes(cred, 'utf-8'))
-
-    ps4_tool.send(login_packet.cipher_text)
-    data = ps4_tool.receive()
-
-    login_packet = manager.init_login_packet(credentials=bytes(cred, 'utf-8'), pin=bytes(pin, 'utf-8'))
-    ps4_tool.send(login_packet.cipher_text)
-    data = ps4_tool.receive()
 
 @app.route('/action', methods=['POST'])
 def action():

@@ -31,9 +31,23 @@ def execute_action(data):
     logger.setLevel(logging.getLevelName(log_level))
 
     action = Action.map(raw=data)
-    ps4 = PS4(ip=ip, port=port, credentials=bytes(credentials, 'utf-8'))
-    ps4.login()
-    ps4.execute(action=action)
+
+    retry_count = 0
+    while True:
+        try:
+            ps4 = PS4(ip=ip, port=port, credentials=bytes(credentials, 'utf-8'))
+            ps4.login()
+            ps4.execute(action=action)
+            break
+        except ConnectionRefusedError as cre:
+            if retry_count > 2:
+                logger.error("failed to login on %s attempts!", retry_count)
+                raise cre
+            logger.debug("retrying login....")
+            retry_count += 1
+            continue
+        except Exception as e:
+            raise e
 
 
 def register(pin):

@@ -4,7 +4,7 @@ from pathlib import Path
 
 class ConfigMixin:
     def __init__(self):
-        self.name = 'python-ps4.ini'
+        self.name = '.python-ps4.ini'
         self.config = configparser.ConfigParser()
 
     def load(self):

@@ -36,9 +36,11 @@ class Action:
 
 
 class AppSelection(Action):
-    def __init__(self, command: Command, data: any):
+    def __init__(self, command: Command = None, data: any = None):
         super().__init__(command=command, data=data)
-        self.application = Application(self.data['params']['newApplication'])
+        self.application = None
+        if not self.data is None:
+            self.application = Application(self.data['params']['newApplication'])
 
     def get_application(self):
         if self.application == Application.NETFLIX:

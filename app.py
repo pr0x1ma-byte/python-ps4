@@ -2,7 +2,7 @@ import logging
 from flask import Flask, request
 from flask_cors import CORS
 
-from ps4 import PS4
+from ps4 import PS4, Action
 from ps4.config import ConfigMixin
 from ps4.tools import GoogleHomeDiscoveryTool
 
@@ -29,6 +29,7 @@ def execute_action(data):
     log_level = config.config['DEFAULT']['log_level']
     logger.setLevel(logging.getLevelName(log_level))
 
+    action = Action.map(raw=data)
     ps4 = PS4(ip=ip, port=port, credentials=bytes(credentials, 'utf-8'))
     ps4.login()
     ps4.execute(action=action)

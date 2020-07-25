@@ -83,8 +83,9 @@ class PS4(Socket):
         logger.debug("response: %s", data)
 
         # TODO: actually check response value
-        self.is_logged_in = True
-        return True
+        if data[4] == 0x07:
+            self.is_logged_in = True
+        return self.is_logged_in
 
     def shutdown(self) -> bool:
         if self.is_logged_in:

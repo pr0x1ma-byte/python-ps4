@@ -5,7 +5,7 @@ from flask_cors import CORS
 from ps4 import PS4, Action
 from ps4.config import ConfigMixin
 from ps4.tools import GoogleHomeDiscoveryTool
-
+import setproctitle
 import threading, argparse, sys
 
 parser = argparse.ArgumentParser(description='Command PS4 from Google')
@@ -54,6 +54,8 @@ def action():
 
 
 if __name__ == '__main__':
+
+    setproctitle('python-ps4')
     if args.is_register:
         pin = input("Pin: ")
         register(pin)

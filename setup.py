@@ -12,7 +12,7 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/grant100/python-ps4",
     packages=setuptools.find_packages(),
-    install_requires=['Flask', 'Flask-Cors', 'pycryptodome'],
+    install_requires=['Flask', 'Flask-Cors', 'pycryptodome', 'setproctitle'],
 
     classifiers=[
         "Programming Language :: Python :: 3",

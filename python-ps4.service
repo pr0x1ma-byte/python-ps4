@@ -1,0 +1,14 @@
+[Unit]
+Description=Python PS4 Home Automation
+After=network.target
+
+[Service]
+ExecStart=/home/pi/code/python-ps4/env/bin/python3 -u app.py
+WorkingDirectory=/home/pi/code/python-ps4/
+StandardOutput=inherit
+StandardError=inherit
+Restart=always
+User=pi
+
+[Install]
+WantedBy=multi-user.target

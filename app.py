@@ -8,6 +8,7 @@ from ps4.tools import GoogleHomeDiscoveryTool
 import setproctitle
 import threading, argparse, sys
 
+setproctitle.setproctitle('python-ps4')
 parser = argparse.ArgumentParser(description='Command PS4 from Google')
 parser.add_argument('--register', dest='is_register', action='store_true', help='initiate registration with PS4')
 
@@ -55,7 +56,6 @@ def action():
 
 if __name__ == '__main__':
 
-    setproctitle('python-ps4')
     if args.is_register:
         pin = input("Pin: ")
         register(pin)

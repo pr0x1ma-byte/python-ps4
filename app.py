@@ -1,6 +1,6 @@
 import logging
 from logging.handlers import SysLogHandler
-
+import platform
 from flask import Flask, request
 from flask_cors import CORS
 
@@ -13,11 +13,21 @@ import threading, argparse, sys
 setproctitle.setproctitle('python-ps4')
 parser = argparse.ArgumentParser(description='Command PS4 from Google')
 parser.add_argument('--register', dest='is_register', action='store_true', help='initiate registration with PS4')
-parser.add_argument('--debug', dest='debug', action='store_true', default=False, help='initiate registration with PS4')
+parser.add_argument('--debug', dest='debug', action='store_true', default=False, help='enable debug output')
 
 args = parser.parse_args()
 logger = logging.getLogger()
-logger.addHandler(SysLogHandler(address='/dev/log'))
+
+address='/dev/log'
+if platform.system() == 'Darwin':
+    address='/var/run/syslog'
+
+logger.addHandler(SysLogHandler(address=address))
+
+if args.debug:
+    logger.setLevel(logging.DEBUG)
+else:
+    logger.setLevel(logging.INFO)
 
 app = Flask(__name__)
 CORS(app)
@@ -29,8 +39,6 @@ def execute_action(data):
     ip = config.config['DEFAULT']['ip']
     port = int(config.config['DEFAULT']['port'])
     credentials = config.config['DEFAULT']['credential']
-    log_level = config.config['DEFAULT']['log_level']
-    logger.setLevel(logging.getLevelName(log_level))
 
     action = Action.map(raw=data)
 
@@ -71,9 +79,6 @@ def action():
 
 
 if __name__ == '__main__':
-
-    if args.debug:
-        logger.setLevel(logging.DEBUG)
 
     if args.is_register:
         pin = input("Pin: ")

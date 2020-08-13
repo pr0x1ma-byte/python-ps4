@@ -39,7 +39,7 @@ class PS4(Socket):
                 self.is_discovered = is_discovered
 
                 if isinstance(self.action, OnOff):
-                    if self.is_standby and self.action.state:
+                    if self.is_standby and not self.action.state:
                         logger.warning("playstation is already in standby mode")
                         raise OnOffException('Playstation is already off')
 

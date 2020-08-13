@@ -51,7 +51,7 @@ class AppSelection(Action):
             return b'CUSA15607'
 
     def __repr__(self):
-        return self.application.__repr__()
+        return "Action.<Launch(%s)>" % self.application
 
 
 class OnOff(Action):

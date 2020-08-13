@@ -67,7 +67,7 @@ class PS4(Socket):
         try:
             self.discover()
         except OnOffException:
-            return
+            return False
 
         self.connect(self.ip, self.port)
         logger.debug("connected to playstation on {ip: %s, port: %s}", self.ip, self.port)
@@ -151,9 +151,9 @@ class PS4(Socket):
             if 'Ok' in data.decode('utf-8'):
                 is_discovered = True
 
-            if '620 Server Standby' in data.decode('utf-8'):
-
+            if '620' in data.decode('utf-8'):
                 is_standby = True
+
         except Exception as e:
             logger.error("error sending search packet")
             raise e

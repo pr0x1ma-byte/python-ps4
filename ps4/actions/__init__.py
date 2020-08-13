@@ -62,4 +62,4 @@ class OnOff(Action):
             self.state = self.data['params']['on']
 
     def __repr__(self):
-        return "Action.<%s>" % "ON" if not self.state else "OFF"
+        return "Action.<%s>" % "ON" if self.state else "OFF"

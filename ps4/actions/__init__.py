@@ -50,6 +50,9 @@ class AppSelection(Action):
         if self.application == Application.DISNEY:
             return b'CUSA15607'
 
+    def __repr__(self):
+        return self.application.__repr__()
+
 
 class OnOff(Action):
     def __init__(self, command: Command = None, data: any = None):
@@ -57,3 +60,6 @@ class OnOff(Action):
         self.state = None
         if not self.data is None:
             self.state = self.data['params']['on']
+
+    def __repr__(self):
+        return "Action.<%s>" % "ON" if not self.state else "OFF"

@@ -42,7 +42,7 @@ def execute_action(data):
     credentials = config.config['DEFAULT']['credential']
 
     action = Action.map(raw=data)
-
+    logger.debug("recieved automation request: %s", action)
     retry_count = 0
     while True:
         try:

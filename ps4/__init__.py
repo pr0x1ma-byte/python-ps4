@@ -64,10 +64,7 @@ class PS4(Socket):
     def login(self) -> bool:
 
         # search and wakeup
-        try:
-            self.discover()
-        except OnOffException:
-            return False
+        self.discover()
 
         self.connect(self.ip, self.port)
         logger.debug("connected to playstation on {ip: %s, port: %s}", self.ip, self.port)

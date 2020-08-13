@@ -4,7 +4,7 @@ import platform
 from flask import Flask, request
 from flask_cors import CORS
 
-from ps4 import PS4, Action
+from ps4 import PS4, Action, OnOffException
 from ps4.config import ConfigMixin
 from ps4.tools import GoogleHomeDiscoveryTool, CredentialCaptureTool
 import setproctitle
@@ -57,6 +57,8 @@ def execute_action(data):
             logger.debug("retrying login....")
             retry_count += 1
             continue
+        except OnOffException:
+            return
         except Exception as e:
             raise e
 

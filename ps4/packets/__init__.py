@@ -21,6 +21,7 @@ class PacketType(Enum):
     DEVICE_SEARCH = 12
     DEVICE_LAUNCH = 13
     DEVICE_WAKEUP = 14
+    DEVICE_DISCOVERY = 15
 
 
 class Packet:
@@ -64,6 +65,38 @@ class PacketManager:
     def __init__(self):
         self.encryption_module = None
         self.decryption_module = None
+
+    def init_udp_standby_packet(self, protocol_version: bytes = b'00020020',
+                                  system_version: bytes = b'07510001') -> Packet:
+        packet = Packet(packet_type=PacketType.DEVICE_DISCOVERY) \
+            .write_bytes(b'HTTP/1.1 620 Server Standby\n', max_bytes=0) \
+            .write_bytes(b'host-id:F8461C8E7D59\n', max_bytes=0) \
+            .write_bytes(b'host-type:PS4\n', max_bytes=0) \
+            .write_bytes(b'host-name:Py-PS4\n', max_bytes=0) \
+            .write_bytes(b'host-request-port:997\n', max_bytes=0) \
+            .write_bytes(b'device-discovery-protocol-version:', max_bytes=0) \
+            .write_bytes(protocol_version, max_bytes=0) \
+            .write_bytes(b'\n', max_bytes=0) \
+            .write_bytes(b'system-version:', max_bytes=0) \
+            .write_bytes(system_version, max_bytes=0) \
+            .write_bytes(b'\n', max_bytes=0)
+        return packet
+
+    def init_udp_discovery_packet(self, protocol_version: bytes = b'00020020',
+                                  system_version: bytes = b'07510001') -> Packet:
+        packet = Packet(packet_type=PacketType.DEVICE_DISCOVERY) \
+            .write_bytes(b'HTTP/1.1 200 Ok\n', max_bytes=0) \
+            .write_bytes(b'host-id:F8461C8E7D59\n', max_bytes=0) \
+            .write_bytes(b'host-type:PS4\n', max_bytes=0) \
+            .write_bytes(b'host-name:Py-PS4\n', max_bytes=0) \
+            .write_bytes(b'host-request-port:997\n', max_bytes=0) \
+            .write_bytes(b'device-discovery-protocol-version:', max_bytes=0) \
+            .write_bytes(protocol_version, max_bytes=0) \
+            .write_bytes(b'\n', max_bytes=0) \
+            .write_bytes(b'system-version:', max_bytes=0) \
+            .write_bytes(system_version, max_bytes=0) \
+            .write_bytes(b'\n', max_bytes=0)
+        return packet
 
     def init_udp_launch_packet(self, credentials: bytes = b'', protocol_version: bytes = b'00020020') -> Packet:
         if credentials == b'':
@@ -165,8 +198,8 @@ class PacketManager:
         return packet
 
     def init_login_rsp_packet(self, raw_bytes: bytes):
-        #packet = Packet(packet_type=PacketType.SERVER_LOGIN_RSP)
-        #return packet
+        # packet = Packet(packet_type=PacketType.SERVER_LOGIN_RSP)
+        # return packet
         pass
 
     def set_encryption_module(self, encryption_module: EncryptionModule):

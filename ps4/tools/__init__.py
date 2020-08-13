@@ -62,7 +62,6 @@ class GoogleHomeDiscoveryTool(threading.Thread, Socket):
         threading.Thread.__init__(self)
         Socket.__init__(self, protocol=Protocol.UDP)
 
-        # self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
         self.sock.bind(('', self.DISCOVERY_MCAST_PORT))
         multicast_req = struct.pack("4sl", socket.inet_aton(self.DISCOVERY_MCAST_GRP), socket.INADDR_ANY)
@@ -82,6 +81,53 @@ class GoogleHomeDiscoveryTool(threading.Thread, Socket):
         logger.debug('sent discovery response<%s> to: {address: %s, port: %s}', msg, ip, port)
 
 
+class TCPSockServer(threading.Thread, Socket):
+    def __init__(self):
+        threading.Thread.__init__(self)
+        Socket.__init__(self, protocol=Protocol.TCP)
+        self.sock.bind(('0.0.0.0', self.DDP_PORT))
+        self.quit = False
+
+    def run(self):
+        self.sock.listen(1)
+        while not self.quit:
+            try:
+                (csock, address) = self.sock.accept()
+                (raw_bytes, address) = csock.recvfrom(10240)
+                logger.debug(raw_bytes)
+                #print(raw_bytes)
+            except Exception as e:
+                logger.exception(e)
+
+    def stop(self):
+        self.quit = True
+        self.sock.close()
+
+
 class CredentialCaptureTool(Socket):
     def __init__(self):
-        Socket.__init__()
+        Socket.__init__(self, protocol=Protocol.UDP)
+        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+        self.sock.bind(('', self.MCAST_PORT))
+        multicast_req = struct.pack("4sl", socket.inet_aton(self.DISCOVERY_MCAST_GRP), socket.INADDR_ANY)
+        self.sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, multicast_req)
+        self.quit = False
+
+        self.sock2 = TCPSockServer()
+
+    def run(self):
+        self.sock2.start()
+
+        while not self.quit:
+            (raw_bytes, address) = self.sock.recvfrom(10240)
+            self.handle(address, raw_bytes)
+
+    def stop(self):
+        self.quit = True
+
+    def handle(self, address, raw_bytes):
+        msg = PacketManager().init_udp_standby_packet()
+        (ip, port) = address
+        logger.debug('received discovery payload<%s> from: {address: %s, port: %s}', raw_bytes, ip, port)
+        self.sock.sendto(msg.buffer, address)
+        logger.debug('sent discovery response<%s> to: {address: %s, port: %s}', msg.buffer, ip, port)

@@ -5,6 +5,7 @@ import time
 from ps4.encryption import EncryptionModule, DecryptionModule
 
 from ps4.actions import Action, Command, AppSelection, OnOff
+from ps4.exceptions import OnOffException
 
 from ps4.packets import PacketManager
 from ps4.tools import Socket, Protocol
@@ -13,13 +14,16 @@ logger = logging.getLogger()
 
 
 class PS4(Socket):
-    def __init__(self, ip: str, port: int, credentials: bytes):
+    def __init__(self, ip: str, port: int, credentials: bytes, action : Action = None):
         Socket.__init__(self)
         self.ip = ip
         self.port = port
+        self.action = action
 
         self.credentials = credentials
+        self.is_standby = False
         self.is_discovered = False
+
         self.is_logged_in = False
 
         self.manager = PacketManager()
@@ -30,11 +34,21 @@ class PS4(Socket):
     def discover(self, auto_wakeup=True):
         while not self.is_discovered:
             try:
-                self.is_discovered = self.send_search()
+                is_discovered, is_standby = self.send_search()
+                self.is_standby = is_standby
+                self.is_discovered = is_discovered
+
+                if isinstance(self.action, OnOff):
+                    if self.is_standby and self.action.state:
+                        logger.warning("playstation is already in standby mode")
+                        raise OnOffException('Playstation is already off')
+
                 self.send_wakeup()
                 time.sleep(1)
                 if auto_wakeup:
                     self.send_launch()
+            except OnOffException:
+                raise
             except Exception as e:
                 logger.exception(e)
 
@@ -50,7 +64,10 @@ class PS4(Socket):
     def login(self) -> bool:
 
         # search and wakeup
-        self.discover()
+        try:
+            self.discover()
+        except OnOffException:
+            return
 
         self.connect(self.ip, self.port)
         logger.debug("connected to playstation on {ip: %s, port: %s}", self.ip, self.port)
@@ -98,25 +115,26 @@ class PS4(Socket):
             return True
         raise RuntimeError('not logged in: unable to shutdown')
 
-    def run_application(self, action: AppSelection):
+    def run_application(self):
         status_packet = self.manager.init_status_packet()
-        launch_packet = self.manager.init_app_launch_packet(action.get_application())
-        logger.debug("launching %s on playstation", action.application)
+        launch_packet = self.manager.init_app_launch_packet(self.action.get_application())
+        logger.debug("launching %s on playstation", self.action.application)
         self.send(status_packet.cipher_text)
         self.send(launch_packet.cipher_text)
         data = self.receive()
         data = self.decrypt(data)
         logger.debug("response: %s", data)
 
-    def execute(self, action: Action):
-        if isinstance(action, OnOff):
-            if not action.state:
+    def execute(self):
+        if isinstance(self.action, OnOff):
+            if not self.action.state:
                 self.shutdown()
 
-        if isinstance(action, AppSelection):
-            self.run_application(action=action)
+        if isinstance(self.action, AppSelection):
+            self.run_application()
 
     def send_search(self):
+        is_standby = False
         is_discovered = False
         sock = self.get_socket(protocol=Protocol.UDP)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
@@ -132,12 +150,16 @@ class PS4(Socket):
             # TODO map to a proper object
             if 'Ok' in data.decode('utf-8'):
                 is_discovered = True
+
+            if '620 Server Standby' in data.decode('utf-8'):
+
+                is_standby = True
         except Exception as e:
             logger.error("error sending search packet")
             raise e
         finally:
             sock.close()
-            return is_discovered
+            return is_discovered, is_standby
 
     def send_wakeup(self):
         sock = self.get_socket(protocol=Protocol.UDP)

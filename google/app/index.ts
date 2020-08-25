@@ -1,7 +1,7 @@
 /// <reference types="@google/local-home-sdk" />
 const axios = require('axios').default;
 const apiClient = axios.create({
-  baseURL: 'http://10.0.0.173:8081',
+  baseURL: 'http://192.168.1.173:8081',
   responseType: 'json',
   headers: {
     'Content-Type': 'application/json'

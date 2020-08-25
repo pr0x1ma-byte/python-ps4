@@ -4,6 +4,7 @@ clean:
 
 build: clean
 	$(PYTHON) -m venv env/
+	./env/bin/pip install oauth2l/
 	./env/bin/pip install .
 
 run:
